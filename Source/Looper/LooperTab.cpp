@@ -6,7 +6,7 @@ namespace
     constexpr int laneHeight = 270;
     constexpr int laneSpacing = 10;
     constexpr int layoutMargin = 16;
-    constexpr int headerHeight = 118;
+    constexpr int headerHeight = 190;
     constexpr int clipHeight = 74;
 }
 
@@ -363,6 +363,10 @@ private:
 
 LooperTabComponent::LooperTabComponent()
 {
+    defaultLoopDirectory = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+        .getChildFile(ProjectInfo::projectName)
+        .getChildFile("Loops");
+
     headerLabel.setText("Looper", juce::dontSendNotification);
     headerLabel.setFont(juce::Font(24.0f, juce::Font::bold));
     addAndMakeVisible(headerLabel);
@@ -394,6 +398,26 @@ LooperTabComponent::LooperTabComponent()
         autoTrimCapturedEnabled.store(autoTrimCapturedToggle.getToggleState());
     };
     addAndMakeVisible(autoTrimCapturedToggle);
+
+    saveLoopButton.onClick = [this] { saveNamedLoopSet(); };
+    addAndMakeVisible(saveLoopButton);
+
+    loadLoopButton.onClick = [this] { showLoadLoopSetDialog(); };
+    addAndMakeVisible(loadLoopButton);
+
+    loadAutosaveButton.onClick = [this]
+    {
+        if (!loadLoopSet(getAutosaveDirectory()))
+            juce::Logger::writeToLog("No valid loop autosave was found.");
+    };
+    addAndMakeVisible(loadAutosaveButton);
+
+    chooseLoopDirectoryButton.onClick = [this] { chooseLoopDirectory(); };
+    addAndMakeVisible(chooseLoopDirectoryButton);
+
+    loopDirectoryLabel.setJustificationType(juce::Justification::centredLeft);
+    addAndMakeVisible(loopDirectoryLabel);
+    updateLoopDirectoryLabel();
 
     lanesContainer = std::make_unique<juce::Component>();
     lanesViewport.setViewedComponent(lanesContainer.get(), false);
@@ -437,6 +461,7 @@ std::unique_ptr<juce::XmlElement> LooperTabComponent::createStateXml() const
     auto stateXml = std::make_unique<juce::XmlElement>("LOOPER_STATE");
     stateXml->setAttribute("trackCount", currentTrackCount);
     stateXml->setAttribute("autoTrimCapturedEnabled", autoTrimCapturedEnabled.load());
+    stateXml->setAttribute("loopDirectory", defaultLoopDirectory.getFullPathName());
 
     for (int laneIndex = 0; laneIndex < currentTrackCount; ++laneIndex)
     {
@@ -449,6 +474,327 @@ std::unique_ptr<juce::XmlElement> LooperTabComponent::createStateXml() const
     return stateXml;
 }
 
+juce::File LooperTabComponent::getAutosaveDirectory() const
+{
+    return defaultLoopDirectory.getChildFile("Autosave");
+}
+
+void LooperTabComponent::updateLoopDirectoryLabel()
+{
+    loopDirectoryLabel.setText("Save folder: " + defaultLoopDirectory.getFullPathName(),
+                               juce::dontSendNotification);
+}
+
+void LooperTabComponent::chooseLoopDirectory()
+{
+    loopFileChooser = std::make_unique<juce::FileChooser>("Choose loop save folder");
+    loopFileChooser->launchAsync(juce::FileBrowserComponent::openMode
+                                     | juce::FileBrowserComponent::canSelectDirectories,
+                                 [this](const juce::FileChooser& chooser)
+                                 {
+                                     if (chooser.getResult().isDirectory())
+                                     {
+                                         defaultLoopDirectory = chooser.getResult();
+                                         defaultLoopDirectory.createDirectory();
+                                         updateLoopDirectoryLabel();
+                                     }
+                                     loopFileChooser.reset();
+                                 });
+}
+
+void LooperTabComponent::saveNamedLoopSet()
+{
+    defaultLoopDirectory.createDirectory();
+    loopFileChooser = std::make_unique<juce::FileChooser>(
+        "Name loop set", defaultLoopDirectory.getChildFile("New Song.loop"), "*.loop");
+    loopFileChooser->launchAsync(juce::FileBrowserComponent::saveMode
+                                     | juce::FileBrowserComponent::canSelectFiles,
+                                 [this](const juce::FileChooser& chooser)
+                                 {
+                                     const auto selectedFile = chooser.getResult();
+                                     if (selectedFile != juce::File())
+                                     {
+                                         auto songName = selectedFile.getFileNameWithoutExtension();
+                                         if (songName.isNotEmpty())
+                                         {
+                                             const auto songDirectory = defaultLoopDirectory.getChildFile(songName);
+                                             if (!saveLoopSet(songDirectory))
+                                                 juce::Logger::writeToLog("Failed to save loop set: " + songDirectory.getFullPathName());
+                                         }
+                                     }
+                                     loopFileChooser.reset();
+                                 });
+}
+
+void LooperTabComponent::showLoadLoopSetDialog()
+{
+    juce::Array<juce::File> songDirectories;
+    juce::StringArray songNames;
+    for (const auto& entry : juce::RangedDirectoryIterator(defaultLoopDirectory, false, "*", juce::File::findDirectories))
+    {
+        if (entry.getFile().getChildFile("state.xml").existsAsFile())
+        {
+            songDirectories.add(entry.getFile());
+            songNames.add(entry.getFile().getFileName());
+        }
+    }
+
+    if (songDirectories.isEmpty())
+    {
+        juce::Logger::writeToLog("No saved loop sets found in " + defaultLoopDirectory.getFullPathName());
+        return;
+    }
+
+    loopLoadWindow = std::make_unique<juce::AlertWindow>(
+        "Load Loop Set", "Choose a saved song:", juce::AlertWindow::NoIcon);
+
+    for (int index = 0; index < songNames.size(); ++index)
+        loopLoadWindow->addButton(songNames[index], index + 1);
+
+    loopLoadWindow->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    loopLoadWindow->enterModalState(true,
+        juce::ModalCallbackFunction::create([this, songDirectories](int result)
+        {
+            if (result > 0 && result <= songDirectories.size()
+                && !loadLoopSet(songDirectories[result - 1]))
+                juce::Logger::writeToLog("Failed to load loop set: " + songDirectories[result - 1].getFullPathName());
+
+            loopLoadWindow.reset();
+        }));
+    loopLoadWindow->setVisible(true);
+}
+
+void LooperTabComponent::clearAutosave()
+{
+    autosaveClearRequested.store(true);
+}
+
+void LooperTabComponent::autosave()
+{
+    if (autosaveClearRequested.exchange(false))
+    {
+        const auto autosaveDirectory = getAutosaveDirectory();
+        if (autosaveDirectory.exists())
+            autosaveDirectory.deleteRecursively();
+
+        autosaveHasBeenInitialized = false;
+        autosaveCounter = 0;
+    }
+
+    if (!autosaveSaveRequested.exchange(false))
+        return;
+
+    autosaveCounter = 0;
+    bool hasAudio = false;
+    for (int laneIndex = 0; laneIndex < currentTrackCount; ++laneIndex)
+        hasAudio = hasAudio || tracks[laneIndex].recordedSamples.load() > 0;
+
+    if (hasAudio || autosaveHasBeenInitialized)
+    {
+        if (!saveLoopSet(getAutosaveDirectory()))
+            juce::Logger::writeToLog("Failed to update loop autosave.");
+        autosaveHasBeenInitialized = true;
+    }
+}
+
+bool LooperTabComponent::writeTrackAudio(const juce::File& file,
+                                         const juce::AudioBuffer<float>& buffer,
+                                         int numSamples) const
+{
+    if (numSamples <= 0 || buffer.getNumChannels() <= 0)
+        return false;
+
+    file.getParentDirectory().createDirectory();
+
+    juce::WavAudioFormat wavFormat;
+    auto fileOutputStream = file.createOutputStream();
+    if (fileOutputStream == nullptr)
+        return false;
+    std::unique_ptr<juce::OutputStream> outputStream(fileOutputStream.release());
+
+    auto options = juce::AudioFormatWriterOptions()
+        .withSampleRate(currentSampleRate)
+        .withNumChannels(buffer.getNumChannels())
+        .withBitsPerSample(32)
+        .withSampleFormat(juce::AudioFormatWriterOptions::SampleFormat::floatingPoint);
+    auto writer = wavFormat.createWriterFor(outputStream, options);
+
+    if (writer == nullptr)
+        return false;
+
+    return writer->writeFromAudioSampleBuffer(buffer, 0, numSamples);
+}
+
+bool LooperTabComponent::readTrackAudio(const juce::File& file, juce::AudioBuffer<float>& buffer) const
+{
+    juce::AudioFormatManager formatManager;
+    formatManager.registerBasicFormats();
+
+    std::unique_ptr<juce::AudioFormatReader> reader(formatManager.createReaderFor(file));
+    if (reader == nullptr || reader->lengthInSamples <= 0 || reader->numChannels <= 0)
+        return false;
+
+    const int numChannels = static_cast<int>(reader->numChannels);
+    const int sourceSamples = static_cast<int>(reader->lengthInSamples);
+    juce::AudioBuffer<float> sourceBuffer(numChannels, sourceSamples);
+    if (!reader->read(&sourceBuffer, 0, sourceSamples, 0, true, true))
+        return false;
+
+    const int targetSamples = juce::jmax(1, juce::roundToInt(
+        sourceSamples * currentSampleRate / reader->sampleRate));
+    buffer.setSize(numChannels, targetSamples);
+
+    for (int channel = 0; channel < numChannels; ++channel)
+    {
+        juce::LagrangeInterpolator interpolator;
+        interpolator.reset();
+        interpolator.process(
+            reader->sampleRate / currentSampleRate,
+            sourceBuffer.getReadPointer(channel),
+            buffer.getWritePointer(channel),
+            targetSamples);
+    }
+
+    return true;
+}
+
+bool LooperTabComponent::saveLoopSet(const juce::File& directory)
+{
+    if (!directory.createDirectory())
+        return false;
+
+    std::array<juce::AudioBuffer<float>, maxTracks> snapshots;
+    std::array<int, maxTracks> sampleCounts {};
+    auto stateXml = std::make_unique<juce::XmlElement>("LOOP_SET");
+    stateXml->setAttribute("sampleRate", currentSampleRate);
+    stateXml->setAttribute("trackCount", currentTrackCount);
+    stateXml->setAttribute("autoTrimCapturedEnabled", autoTrimCapturedEnabled.load());
+
+    {
+        const juce::ScopedLock lock(trackBufferLock);
+        for (int laneIndex = 0; laneIndex < currentTrackCount; ++laneIndex)
+        {
+            const auto& track = tracks[laneIndex];
+            const int sampleCount = juce::jmax(0, track.recordedSamples.load());
+            sampleCounts[laneIndex] = sampleCount;
+
+            auto trackXml = std::make_unique<juce::XmlElement>("TRACK");
+            trackXml->setAttribute("index", laneIndex);
+            trackXml->setAttribute("samples", sampleCount);
+            trackXml->setAttribute("level", track.level.load());
+            trackXml->setAttribute("muted", track.muted.load());
+            trackXml->setAttribute("trimStart", track.trimStartPercent.load());
+            trackXml->setAttribute("trimEnd", track.trimEndPercent.load());
+            stateXml->addChildElement(trackXml.release());
+
+            if (sampleCount > 0 && track.buffer.getNumChannels() > 0)
+            {
+                snapshots[laneIndex].setSize(track.buffer.getNumChannels(), sampleCount);
+                snapshots[laneIndex].clear();
+                const int copiedSamples = juce::jmin(sampleCount, track.buffer.getNumSamples());
+                for (int channel = 0; channel < track.buffer.getNumChannels(); ++channel)
+                    snapshots[laneIndex].copyFrom(channel, 0, track.buffer, channel, 0, copiedSamples);
+            }
+        }
+    }
+
+    for (int laneIndex = 0; laneIndex < currentTrackCount; ++laneIndex)
+    {
+        if (sampleCounts[laneIndex] <= 0)
+            continue;
+
+        if (!writeTrackAudio(directory.getChildFile("track" + juce::String(laneIndex + 1) + ".wav"),
+                             snapshots[laneIndex], sampleCounts[laneIndex]))
+            return false;
+    }
+
+    for (const auto& entry : juce::RangedDirectoryIterator(directory, false, "track*.wav", juce::File::findFiles))
+    {
+        const auto fileName = entry.getFile().getFileNameWithoutExtension();
+        const int laneIndex = fileName.substring(5).getIntValue() - 1;
+        if (laneIndex >= currentTrackCount || laneIndex < 0 || sampleCounts[laneIndex] <= 0)
+            entry.getFile().deleteFile();
+    }
+
+    return directory.getChildFile("state.xml").replaceWithText(stateXml->toString());
+}
+
+bool LooperTabComponent::loadLoopSet(const juce::File& directory)
+{
+    const auto stateFile = directory.getChildFile("state.xml");
+    if (!stateFile.existsAsFile())
+        return false;
+
+    auto stateXml = juce::XmlDocument::parse(stateFile);
+    if (stateXml == nullptr || !stateXml->hasTagName("LOOP_SET"))
+        return false;
+
+    const int desiredTrackCount = juce::jlimit(0, maxTracks,
+        stateXml->getIntAttribute("trackCount", currentTrackCount));
+    std::array<juce::AudioBuffer<float>, maxTracks> loadedBuffers;
+    std::array<int, maxTracks> sampleCounts {};
+    std::array<float, maxTracks> levels {};
+    std::array<float, maxTracks> trimStarts {};
+    std::array<float, maxTracks> trimEnds {};
+    std::array<bool, maxTracks> muted {};
+
+    for (auto* trackXml = stateXml->getFirstChildElement(); trackXml != nullptr; trackXml = trackXml->getNextElement())
+    {
+        if (!trackXml->hasTagName("TRACK"))
+            continue;
+
+        const int laneIndex = trackXml->getIntAttribute("index", -1);
+        if (laneIndex < 0 || laneIndex >= desiredTrackCount)
+            continue;
+
+        const auto audioFile = directory.getChildFile("track" + juce::String(laneIndex + 1) + ".wav");
+        if (!audioFile.existsAsFile() || !readTrackAudio(audioFile, loadedBuffers[laneIndex]))
+            continue;
+
+        sampleCounts[laneIndex] = juce::jmin(
+            trackXml->getIntAttribute("samples", loadedBuffers[laneIndex].getNumSamples()),
+            loadedBuffers[laneIndex].getNumSamples());
+        levels[laneIndex] = static_cast<float>(trackXml->getDoubleAttribute("level", 1.0));
+        trimStarts[laneIndex] = static_cast<float>(trackXml->getDoubleAttribute("trimStart", 0.0));
+        trimEnds[laneIndex] = static_cast<float>(trackXml->getDoubleAttribute("trimEnd", 0.0));
+        muted[laneIndex] = trackXml->getBoolAttribute("muted", false);
+    }
+
+    setTrackCount(desiredTrackCount);
+    {
+        const juce::ScopedLock lock(trackBufferLock);
+        for (int laneIndex = 0; laneIndex < maxTracks; ++laneIndex)
+        {
+            auto& track = tracks[laneIndex];
+            track.buffer.setSize(0, 0);
+            track.recordedSamples.store(0);
+            track.ready.store(false);
+            track.recording.store(false);
+            track.recordPosition = 0;
+            track.playbackPosition = 0;
+
+            if (laneIndex >= desiredTrackCount || sampleCounts[laneIndex] <= 0)
+                continue;
+
+            track.buffer.makeCopyOf(loadedBuffers[laneIndex]);
+            track.recordedSamples.store(sampleCounts[laneIndex]);
+            track.trimStartPercent.store(juce::jlimit(0.0f, 99.0f, trimStarts[laneIndex]));
+            track.trimEndPercent.store(juce::jlimit(0.0f, 99.0f, trimEnds[laneIndex]));
+            track.level.store(juce::jlimit(0.0f, 2.0f, levels[laneIndex]));
+            track.muted.store(muted[laneIndex]);
+            track.ready.store(true);
+        }
+    }
+
+    transportMode.store(static_cast<int>(TransportMode::Stopped));
+    recordingTrackIndex.store(-1);
+    armedTrackIndex.store(-1);
+    recalculateMasterLoop();
+    refreshLaneUi();
+    autosaveHasBeenInitialized = true;
+    return true;
+}
+
 void LooperTabComponent::restoreStateFromXml(const juce::XmlElement& stateXml)
 {
     auto desiredTrackCount = juce::jlimit(0, maxTracks, stateXml.getIntAttribute("trackCount", currentTrackCount));
@@ -457,6 +803,13 @@ void LooperTabComponent::restoreStateFromXml(const juce::XmlElement& stateXml)
     auto autoTrimState = stateXml.getBoolAttribute("autoTrimCapturedEnabled", true);
     autoTrimCapturedEnabled.store(autoTrimState);
     autoTrimCapturedToggle.setToggleState(autoTrimState, juce::dontSendNotification);
+
+    const auto savedDirectory = stateXml.getStringAttribute("loopDirectory");
+    if (savedDirectory.isNotEmpty())
+    {
+        defaultLoopDirectory = juce::File(savedDirectory);
+        updateLoopDirectoryLabel();
+    }
 
     for (auto* trackXml = stateXml.getFirstChildElement(); trackXml != nullptr; trackXml = trackXml->getNextElement())
     {
@@ -573,6 +926,18 @@ void LooperTabComponent::resized()
     buttonRow.removeFromLeft(8);
     AddLaneButton.setBounds(buttonRow.removeFromLeft(120));
 
+    headerArea.removeFromTop(8);
+    auto loopSetRow = headerArea.removeFromTop(28);
+    saveLoopButton.setBounds(loopSetRow.removeFromLeft(120));
+    loopSetRow.removeFromLeft(8);
+    loadLoopButton.setBounds(loopSetRow.removeFromLeft(120));
+    loopSetRow.removeFromLeft(8);
+    loadAutosaveButton.setBounds(loopSetRow.removeFromLeft(120));
+    headerArea.removeFromTop(6);
+    auto directoryRow = headerArea.removeFromTop(22);
+    chooseLoopDirectoryButton.setBounds(directoryRow.removeFromLeft(120));
+    directoryRow.removeFromLeft(8);
+    loopDirectoryLabel.setBounds(directoryRow);
 
     area.removeFromTop(8);
     lanesViewport.setBounds(area);
@@ -594,6 +959,7 @@ void LooperTabComponent::resized()
 
 void LooperTabComponent::timerCallback()
 {
+    autosave();
     refreshLaneUi();
     transportLabel.setText(getTransportStatusText(), juce::dontSendNotification);
 }
@@ -659,6 +1025,7 @@ void LooperTabComponent::handleClearCommand()
 
 void LooperTabComponent::startFirstRecording()
 {
+    clearAutosave();
     clearTrack(0);
     transportMode.store(static_cast<int>(TransportMode::FirstRecording));
     masterTrackIndex.store(0);
@@ -676,6 +1043,7 @@ void LooperTabComponent::armNextRecording()
     if (nextTrackIndex < 0)
         return;
 
+    clearAutosave();
     armedTrackIndex.store(nextTrackIndex);
 }
 
@@ -684,18 +1052,23 @@ void LooperTabComponent::beginRecordingTrack(int trackIndex, int targetLengthSam
     if (trackIndex < 0 || trackIndex >= maxTracks)
         return;
 
-    auto& track = tracks[trackIndex];
-    track.recordPosition = 0;
-    track.playbackPosition = 0;
-    track.recording.store(true);
-    track.ready.store(false);
-    track.muted.store(false);
-
     const int initialSamples = targetLengthSamples > 0
         ? targetLengthSamples
         : juce::jmax(currentBlockSize * 4, 2048);
 
+    auto& track = tracks[trackIndex];
     ensureRecordingCapacity(track, initialSamples, currentChannelCount, targetLengthSamples > 0);
+
+    {
+        const juce::ScopedLock lock(trackBufferLock);
+        track.buffer.clear();
+        track.recordPosition = 0;
+        track.playbackPosition = 0;
+        track.recordedSamples.store(0);
+        track.recording.store(true);
+        track.ready.store(false);
+        track.muted.store(false);
+    }
 
     recordingTrackIndex.store(trackIndex);
 
@@ -725,6 +1098,7 @@ void LooperTabComponent::finalizeRecordingTrack(int trackIndex)
         masterTimelinePosition.store(0);
     }
 
+    autosaveSaveRequested.store(true);
     recordingTrackIndex.store(-1);
     armedTrackIndex.store(-1);
 
@@ -769,6 +1143,7 @@ void LooperTabComponent::clearTrack(int trackIndex)
     const juce::ScopedLock lock(trackBufferLock);
     auto& track = tracks[trackIndex];
     const bool wasMaster = (masterTrackIndex.load() == trackIndex);
+    autosaveHasBeenInitialized = autosaveHasBeenInitialized || track.recordedSamples.load() > 0;
 
     track.buffer.setSize(0, 0);
     track.recordedSamples.store(0);

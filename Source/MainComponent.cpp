@@ -98,6 +98,7 @@ MainComponent::MainComponent()
     setupLoopTab();
 
     setSize(800, 600);
+    startTimerHz(2);
 
     loadPersistedState();
 
@@ -119,6 +120,7 @@ MainComponent::MainComponent()
 
 MainComponent::~MainComponent()
 {
+    stopTimer();
     savePersistedState();
     shutdownAudio();
 }
@@ -436,6 +438,30 @@ void MainComponent::releaseResources()
 
     if (looperTabComponent != nullptr)
         looperTabComponent->releaseResources();
+}
+
+void MainComponent::timerCallback()
+{
+    auto* audioDevice = deviceManager.getCurrentAudioDevice();
+    if (audioDeviceNeedsRecovery.load()
+        || audioDevice == nullptr
+        || !audioDevice->isOpen()
+        || !audioDevice->isPlaying())
+        tryRestoreAudioDevice();
+}
+
+void MainComponent::tryRestoreAudioDevice()
+{
+    if (restoringAudioDevice)
+        return;
+
+    restoringAudioDevice = true;
+    deviceManager.closeAudioDevice();
+    restoreAudioDeviceState();
+    restoringAudioDevice = false;
+
+    if (deviceManager.getCurrentAudioDevice() != nullptr)
+        audioDeviceNeedsRecovery.store(false);
 }
 
 void MainComponent::paint(juce::Graphics& g)

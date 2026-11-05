@@ -9,6 +9,7 @@ GuitarFX is a JUCE-based Windows desktop guitar effects application. It processe
 - Audio input and output device selection.
 - Automatic preference for the `Focusrite USB ASIO` device when it is available.
 - Audio device settings are restored between runs.
+- If the audio device disconnects, the application retries the saved device configuration in the background so it can recover after the interface is reconnected.
 
 ### Built-in effects
 
@@ -53,6 +54,13 @@ The Looper tab supports up to ten lanes:
 - Drag the waveform handles to trim the start and end.
 - Automatically trim captured audio based on its signal level.
 - Add lanes with **Add Lane**.
+- Loop audio is autosaved approximately every two seconds while a loop exists.
+- Use **Load Autosave** to restore the most recent recovery copy after restarting.
+- Use **Set Save Folder** to choose and view the default song library folder.
+- Use **Save Loop Set** to enter a song name; each song is stored in its own folder inside the library.
+- Use **Load Loop Set** to choose from the saved songs in the library.
+
+Loop sets contain a `state.xml` metadata file and one 32-bit floating-point WAV file per populated lane. The automatic recovery copy is stored in an `Autosave` folder inside the selected song library. Starting a new recording invalidates the previous autosave so it cannot be mistaken for the new session.
 
 The application saves audio-device settings, VST3 chain state, and looper lane settings in a JUCE XML state file under the user application-data directory.
 
@@ -110,3 +118,4 @@ Build products, Visual Studio caches, and user-specific settings are excluded by
 - The project is currently configured around the Visual Studio 2022 exporter and x64 Windows builds.
 - VST3 scanning is performed against the built-in default paths.
 - Audio state is persisted locally, not committed to the repository.
+- Loop audio is resampled to the current audio device sample rate when loaded.

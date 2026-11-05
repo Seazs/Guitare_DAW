@@ -41,6 +41,9 @@ public:
 
     std::unique_ptr<juce::XmlElement> createStateXml() const;
     void restoreStateFromXml(const juce::XmlElement& stateXml);
+    bool saveLoopSet(const juce::File& directory);
+    bool loadLoopSet(const juce::File& directory);
+    juce::File getAutosaveDirectory() const;
     void setTrackCount(int trackCount);
     int getTrackCount() const { return currentTrackCount; }
     void setTrackLevel(int trackIndex, float level);
@@ -57,6 +60,14 @@ private:
     friend class LaneComponent;
 
     void timerCallback() override;
+    void autosave();
+    void chooseLoopDirectory();
+    void saveNamedLoopSet();
+    void showLoadLoopSetDialog();
+    void clearAutosave();
+    void updateLoopDirectoryLabel();
+    bool writeTrackAudio(const juce::File& file, const juce::AudioBuffer<float>& buffer, int numSamples) const;
+    bool readTrackAudio(const juce::File& file, juce::AudioBuffer<float>& buffer) const;
 
     void handlePendingCommands();
     void handleSpaceCommand();
@@ -98,6 +109,13 @@ private:
     juce::TextButton stopButton { "Stop (Esc)" };
     juce::TextButton clearButton { "Clear All (Del)" };
     juce::ToggleButton autoTrimCapturedToggle { "Auto-trim new lanes" };
+    juce::TextButton saveLoopButton { "Save Loop Set" };
+    juce::TextButton loadLoopButton { "Load Loop Set" };
+    juce::TextButton loadAutosaveButton { "Load Autosave" };
+    juce::TextButton chooseLoopDirectoryButton { "Set Save Folder" };
+    juce::Label loopDirectoryLabel;
+    std::unique_ptr<juce::FileChooser> loopFileChooser;
+    std::unique_ptr<juce::AlertWindow> loopLoadWindow;
     juce::Viewport lanesViewport;
     std::unique_ptr<juce::Component> lanesContainer;
 
@@ -120,6 +138,11 @@ private:
     int currentBlockSize = 128;
     int currentChannelCount = 2;
     int currentTrackCount = 0;
+    int autosaveCounter = 0;
+    bool autosaveHasBeenInitialized = false;
+    std::atomic<bool> autosaveClearRequested { false };
+    std::atomic<bool> autosaveSaveRequested { false };
+    juce::File defaultLoopDirectory;
 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LooperTabComponent)

@@ -9,7 +9,7 @@
 
 class VSTEffect;
 
-class MainComponent : public juce::AudioAppComponent
+class MainComponent : public juce::AudioAppComponent, private juce::Timer
 {
 public:
     MainComponent();
@@ -36,6 +36,8 @@ private:
     VSTEffect* addVSTPlugin(const juce::PluginDescription& description, const juce::XmlElement* stateToRestore = nullptr);
     void removeVSTPlugin(VSTEffect* effect);
     void updateVSTEffectsLayout();
+    void timerCallback() override;
+    void tryRestoreAudioDevice();
 
     juce::File getPersistedStateFile() const;
 
@@ -63,6 +65,8 @@ private:
 
     double currentSampleRate = 44100.0;
     int currentBlockSize = 128;
+    std::atomic<bool> audioDeviceNeedsRecovery { false };
+    bool restoringAudioDevice = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

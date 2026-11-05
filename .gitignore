@@ -24,3 +24,7 @@ Builds/**/*.FileListAbsolute.txt
 .cache/
 .DS_Store
 Thumbs.db
+
+# Runtime-created loop libraries
+Autosave/
+Saves/
