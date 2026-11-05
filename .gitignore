@@ -1,0 +1,26 @@
+# Visual Studio user settings and indexes
+.vs/
+*.user
+
+# Native build output and intermediate files
+Builds/**/x64/
+Builds/**/*.obj
+Builds/**/*.pdb
+Builds/**/*.ilk
+Builds/**/*.exe
+Builds/**/*.dll
+Builds/**/*.lib
+Builds/**/*.exp
+Builds/**/*.iobj
+Builds/**/*.ipdb
+Builds/**/*.tlog/
+Builds/**/*.recipe
+Builds/**/*.log
+Builds/**/*.res
+Builds/**/*.lnk
+Builds/**/*.FileListAbsolute.txt
+
+# IDE and OS noise
+.cache/
+.DS_Store
+Thumbs.db
