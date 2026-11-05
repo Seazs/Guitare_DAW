@@ -79,6 +79,8 @@ The application saves audio-device settings, VST3 chain state, and looper lane s
 
 The generated Visual Studio project currently contains machine-specific JUCE paths from the original development environment. Re-exporting from Projucer is the recommended way to update them for another machine.
 
+For more information on building JUCE applications, see the [JUCE Tutorials](https://juce.com/learn/tutorials/).
+
 ## Running
 
 1. Connect the audio interface before launching the application.
