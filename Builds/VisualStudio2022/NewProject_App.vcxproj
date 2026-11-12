@@ -4389,6 +4389,7 @@
     <ClInclude Include="C:\Users\alexandre\Desktop\musique\JUCE\modules\juce_gui_extra\native\juce_NSViewFrameWatcher_mac.h" />
     <ClInclude Include="C:\Users\alexandre\Desktop\musique\JUCE\modules\juce_gui_extra\juce_gui_extra.h" />
     <ClInclude Include="..\..\JuceLibraryCode\JuceHeader.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="C:\Users\alexandre\Desktop\musique\JUCE\modules\juce_audio_devices\native\asio\LICENSE.txt" />
@@ -4418,6 +4419,10 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include=".\resources.rc" />
+    <ResourceCompile Include="app.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="C:\Users\alexandre\Downloads\Icône-de-pédale-looper-néon.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

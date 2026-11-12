@@ -3614,9 +3614,6 @@
     <ClInclude Include="..\..\Source\MainComponent.h">
       <Filter>NewProject\Source</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Source\Looper\LooperTab.h">
-      <Filter>NewProject\Source\Looper</Filter>
-    </ClInclude>
     <ClInclude Include="C:\Users\alexandre\Desktop\musique\JUCE\modules\juce_audio_basics\audio_play_head\juce_AudioPlayHead.h">
       <Filter>JUCE Modules\juce_audio_basics\audio_play_head</Filter>
     </ClInclude>
@@ -7790,6 +7787,7 @@
     <ClInclude Include="..\..\Source\VST\VSTPluginManager.h">
       <Filter>NewProject\vst</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="C:\Users\alexandre\Desktop\musique\JUCE\modules\juce_audio_devices\native\asio\LICENSE.txt">
@@ -7869,5 +7867,9 @@
     <ResourceCompile Include=".\resources.rc">
       <Filter>JUCE Library Code</Filter>
     </ResourceCompile>
+    <ResourceCompile Include="app.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="C:\Users\alexandre\Downloads\Icône-de-pédale-looper-néon.ico" />
   </ItemGroup>
 </Project>

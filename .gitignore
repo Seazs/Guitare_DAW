@@ -17,6 +17,7 @@ Builds/**/*.tlog/
 Builds/**/*.recipe
 Builds/**/*.log
 Builds/**/*.res
+Builds/**/*.aps
 Builds/**/*.lnk
 Builds/**/*.FileListAbsolute.txt
 
