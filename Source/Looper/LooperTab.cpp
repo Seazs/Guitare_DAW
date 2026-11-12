@@ -945,6 +945,10 @@ void LooperTabComponent::resized()
     if (lanesContainer == nullptr)
         return;
 
+    const int containerHeight = layoutMargin * 2 + currentTrackCount * laneHeight + (currentTrackCount - 1) * laneSpacing;
+    lanesContainer->setSize(juce::jmax(1, lanesViewport.getWidth() - 2),
+                            juce::jmax(containerHeight, lanesViewport.getHeight()));
+
     auto lanesArea = lanesContainer->getLocalBounds().reduced(layoutMargin);
     for (int laneIndex = 0; laneIndex < currentTrackCount; ++laneIndex)
     {
@@ -952,9 +956,6 @@ void LooperTabComponent::resized()
         if (laneIndex + 1 < maxTracks)
             lanesArea.removeFromTop(laneSpacing);
     }
-
-    const int containerHeight = layoutMargin * 2 + currentTrackCount * laneHeight + (currentTrackCount - 1) * laneSpacing;
-    lanesContainer->setSize(juce::jmax(1, lanesViewport.getWidth() - 2), juce::jmax(containerHeight, lanesViewport.getHeight()));
 }
 
 void LooperTabComponent::timerCallback()
