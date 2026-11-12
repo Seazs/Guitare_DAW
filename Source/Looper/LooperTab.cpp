@@ -6,7 +6,7 @@ namespace
     constexpr int laneHeight = 270;
     constexpr int laneSpacing = 10;
     constexpr int layoutMargin = 16;
-    constexpr int headerHeight = 190;
+    constexpr int headerHeight = 226;
     constexpr int clipHeight = 74;
 }
 
@@ -303,6 +303,22 @@ private:
         g.fillRect(waveformBounds.getX(), waveformBounds.getY(), trimStartX - waveformBounds.getX(), waveformBounds.getHeight());
         g.fillRect(trimEndX, waveformBounds.getY(), waveformBounds.getRight() - trimEndX, waveformBounds.getHeight());
 
+        if (owner.seamAuditionEnabled.load()
+            && laneIndex == owner.masterTrackIndex.load())
+        {
+            const int playbackLength = owner.getPlaybackLengthSamples(track);
+            const int previewSamples = juce::jmin(
+                playbackLength,
+                juce::jmax(1, static_cast<int>(std::round(
+                    owner.currentSampleRate * owner.seamPreviewLengthMs.load() / 1000.0))));
+            const float previewWidth = waveformBounds.getWidth()
+                * static_cast<float>(previewSamples) / static_cast<float>(juce::jmax(1, playbackLength));
+
+            g.setColour(juce::Colour(0xff72d6ff).withAlpha(0.20f));
+            g.fillRect(trimStartX, waveformBounds.getY(), previewWidth, waveformBounds.getHeight());
+            g.fillRect(trimEndX - previewWidth, waveformBounds.getY(), previewWidth, waveformBounds.getHeight());
+        }
+
         g.setColour(juce::Colour(0xff7cd1ff));
         g.drawLine(trimStartX, waveformBounds.getY(), trimStartX, waveformBounds.getBottom(), 2.0f);
         g.drawLine(trimEndX, waveformBounds.getY(), trimEndX, waveformBounds.getBottom(), 2.0f);
@@ -327,10 +343,35 @@ private:
     void drawPlayhead(juce::Graphics& g, const juce::Rectangle<float>& waveformBounds)
     {
         const auto& track = owner.tracks[laneIndex];
-        if (!track.ready.load() || owner.masterLoopLengthSamples.load() <= 0)
+        if (!track.ready.load())
             return;
 
-        if (!owner.isTransportPlaying())
+        if (owner.seamAuditionEnabled.load() && laneIndex == owner.masterTrackIndex.load())
+        {
+            const int playbackLength = owner.getPlaybackLengthSamples(track);
+            const int previewLength = juce::jmin(
+                playbackLength,
+                juce::jmax(1, static_cast<int>(std::round(
+                    owner.currentSampleRate * owner.seamPreviewLengthMs.load() / 1000.0))));
+            const int cycleLength = previewLength * 2;
+            const int cyclePosition = owner.seamPreviewPosition.load() % juce::jmax(1, cycleLength);
+            const int playbackPosition = cyclePosition < previewLength
+                ? playbackLength - previewLength + cyclePosition
+                : cyclePosition - previewLength;
+
+            const float startX = waveformBounds.getX()
+                + waveformBounds.getWidth() * (track.trimStartPercent.load() / 100.0f);
+            const float endX = waveformBounds.getRight()
+                - waveformBounds.getWidth() * (track.trimEndPercent.load() / 100.0f);
+            const float x = startX + (endX - startX)
+                * static_cast<float>(playbackPosition) / static_cast<float>(juce::jmax(1, playbackLength));
+
+            g.setColour(juce::Colour(0xffc7cdd5));
+            g.fillRect(x - 2.0f, waveformBounds.getY(), 4.0f, waveformBounds.getHeight());
+            return;
+        }
+
+        if (owner.masterLoopLengthSamples.load() <= 0 || !owner.isTransportPlaying())
             return;
 
         const int loopLength = juce::jmax(1, owner.masterLoopLengthSamples.load());
@@ -398,6 +439,34 @@ LooperTabComponent::LooperTabComponent()
         autoTrimCapturedEnabled.store(autoTrimCapturedToggle.getToggleState());
     };
     addAndMakeVisible(autoTrimCapturedToggle);
+
+    seamAuditionToggle.setToggleState(false, juce::dontSendNotification);
+    seamAuditionToggle.onClick = [this]
+    {
+        seamAuditionEnabled.store(seamAuditionToggle.getToggleState());
+        seamPreviewPosition.store(0);
+    };
+    addAndMakeVisible(seamAuditionToggle);
+
+    seamPreviewLabel.setText("Preview", juce::dontSendNotification);
+    seamPreviewLabel.setJustificationType(juce::Justification::centredLeft);
+    addAndMakeVisible(seamPreviewLabel);
+
+    seamPreviewLengthBox.addItem("250 ms", 1);
+    seamPreviewLengthBox.addItem("500 ms", 2);
+    seamPreviewLengthBox.addItem("1 sec", 3);
+    seamPreviewLengthBox.addItem("2 sec", 4);
+    seamPreviewLengthBox.setSelectedId(3, juce::dontSendNotification);
+    seamPreviewLengthBox.onChange = [this]
+    {
+        const int lengthMs = seamPreviewLengthBox.getSelectedId() == 1 ? 250
+            : seamPreviewLengthBox.getSelectedId() == 2 ? 500
+            : seamPreviewLengthBox.getSelectedId() == 4 ? 2000
+                                                        : 1000;
+        seamPreviewLengthMs.store(lengthMs);
+        seamPreviewPosition.store(0);
+    };
+    addAndMakeVisible(seamPreviewLengthBox);
 
     saveLoopButton.onClick = [this] { saveNamedLoopSet(); };
     addAndMakeVisible(saveLoopButton);
@@ -927,6 +996,14 @@ void LooperTabComponent::resized()
     AddLaneButton.setBounds(buttonRow.removeFromLeft(120));
 
     headerArea.removeFromTop(8);
+    auto seamRow = headerArea.removeFromTop(28);
+    seamAuditionToggle.setBounds(seamRow.removeFromLeft(130));
+    seamRow.removeFromLeft(8);
+    seamPreviewLabel.setBounds(seamRow.removeFromLeft(58));
+    seamRow.removeFromLeft(4);
+    seamPreviewLengthBox.setBounds(seamRow.removeFromLeft(82));
+
+    headerArea.removeFromTop(8);
     auto loopSetRow = headerArea.removeFromTop(28);
     saveLoopButton.setBounds(loopSetRow.removeFromLeft(120));
     loopSetRow.removeFromLeft(8);
@@ -962,6 +1039,14 @@ void LooperTabComponent::timerCallback()
 {
     autosave();
     refreshLaneUi();
+    const bool masterReady = masterTrackIndex.load() >= 0
+        && tracks[masterTrackIndex.load()].ready.load();
+    seamAuditionToggle.setEnabled(masterReady && recordingTrackIndex.load() < 0);
+    if (!masterReady && seamAuditionEnabled.load())
+    {
+        seamAuditionEnabled.store(false);
+        seamAuditionToggle.setToggleState(false, juce::dontSendNotification);
+    }
     transportLabel.setText(getTransportStatusText(), juce::dontSendNotification);
 }
 
@@ -1321,6 +1406,9 @@ juce::String LooperTabComponent::getTransportStatusText() const
     if (loopSamples > 0)
         status += " | Master loop: " + juce::String(loopSeconds, 2) + " s";
 
+    if (seamAuditionEnabled.load())
+        status += " | Auditioning seam";
+
     if (armedTrackIndex.load() >= 0)
         status += " | armed lane " + juce::String(armedTrackIndex.load() + 1);
 
@@ -1424,6 +1512,48 @@ void LooperTabComponent::mixTrackPlayback(TrackState& track, juce::AudioBuffer<f
     }
 }
 
+void LooperTabComponent::mixSeamPreview(juce::AudioBuffer<float>& buffer, int startSample, int numSamples)
+{
+    const int masterIndex = masterTrackIndex.load();
+    if (masterIndex < 0 || masterIndex >= maxTracks)
+        return;
+
+    auto& track = tracks[masterIndex];
+    const juce::ScopedLock lock(trackBufferLock);
+    if (!track.ready.load() || track.muted.load())
+        return;
+
+    const int playbackLength = getPlaybackLengthSamples(track);
+    const int previewLength = juce::jmin(
+        playbackLength,
+        juce::jmax(1, static_cast<int>(std::round(
+            currentSampleRate * seamPreviewLengthMs.load() / 1000.0))));
+    const int cycleLength = previewLength * 2;
+    const int startOffset = getTrimStartSamples(track);
+    const int channelCount = juce::jmin(buffer.getNumChannels(), track.buffer.getNumChannels());
+    const float trackLevel = track.level.load();
+    int previewPosition = seamPreviewPosition.load();
+
+    for (int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex)
+    {
+        const int cyclePosition = previewPosition % cycleLength;
+        const int playbackPosition = cyclePosition < previewLength
+            ? playbackLength - previewLength + cyclePosition
+            : cyclePosition - previewLength;
+        const int sourceIndex = startOffset + playbackPosition;
+
+        for (int channel = 0; channel < channelCount; ++channel)
+            buffer.addSample(channel, startSample + sampleIndex,
+                             track.buffer.getSample(channel, sourceIndex) * trackLevel);
+
+        ++previewPosition;
+        if (previewPosition >= cycleLength)
+            previewPosition = 0;
+    }
+
+    seamPreviewPosition.store(previewPosition);
+}
+
 void LooperTabComponent::processSegment(juce::AudioBuffer<float>& buffer, int startSample, int numSamples)
 {
     const int activeRecordTrack = recordingTrackIndex.load();
@@ -1487,6 +1617,14 @@ void LooperTabComponent::process(juce::AudioBuffer<float>& buffer, int startSamp
 
     currentChannelCount = buffer.getNumChannels();
     handlePendingCommands();
+
+    if (seamAuditionEnabled.load()
+        && recordingTrackIndex.load() < 0
+        && masterLoopLengthSamples.load() > 0)
+    {
+        mixSeamPreview(buffer, startSample, numSamples);
+        return;
+    }
 
     if (transportMode.load() == static_cast<int>(TransportMode::Stopped))
         return;

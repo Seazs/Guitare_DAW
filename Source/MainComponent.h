@@ -36,12 +36,20 @@ private:
     VSTEffect* addVSTPlugin(const juce::PluginDescription& description, const juce::XmlElement* stateToRestore = nullptr);
     void removeVSTPlugin(VSTEffect* effect);
     void updateVSTEffectsLayout();
+    void selectWorkspace(int tabIndex);
     void timerCallback() override;
     void tryRestoreAudioDevice();
 
     juce::File getPersistedStateFile() const;
 
     juce::TabbedComponent tabs{ juce::TabbedButtonBar::TabsAtTop };
+    juce::Label appTitle;
+    juce::Label appSubtitle;
+    juce::Label audioStatusLabel;
+    juce::TextButton pedalboardButton { "Pedalboard" };
+    juce::TextButton pluginsButton { "Plugins" };
+    juce::TextButton looperButton { "Looper" };
+    juce::TextButton settingsButton { "Settings" };
 
     std::unique_ptr<juce::Component> audioSettingsComponent;
     juce::Viewport effectsViewport;

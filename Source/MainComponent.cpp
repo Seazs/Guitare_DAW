@@ -58,19 +58,102 @@ private:
     juce::KnownPluginList& pluginList;
 };
 
+class SettingsWorkspace : public juce::Component
+{
+public:
+    explicit SettingsWorkspace(juce::AudioDeviceManager& deviceManager)
+    {
+        lookAndFeel.setColour(juce::ResizableWindow::backgroundColourId, juce::Colour(0xff171c24));
+        lookAndFeel.setColour(juce::Label::textColourId, juce::Colour(0xffd7e0eb));
+        lookAndFeel.setColour(juce::GroupComponent::outlineColourId, juce::Colour(0xff3a4656));
+        lookAndFeel.setColour(juce::GroupComponent::textColourId, juce::Colour(0xffeef3f8));
+        lookAndFeel.setColour(juce::ComboBox::backgroundColourId, juce::Colour(0xff252d38));
+        lookAndFeel.setColour(juce::ComboBox::textColourId, juce::Colour(0xffeef3f8));
+        lookAndFeel.setColour(juce::ComboBox::outlineColourId, juce::Colour(0xff4a586b));
+        lookAndFeel.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff2b3543));
+        lookAndFeel.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffe6edf5));
+        lookAndFeel.setColour(juce::ToggleButton::textColourId, juce::Colour(0xffd7e0eb));
+        lookAndFeel.setColour(juce::Slider::thumbColourId, juce::Colour(0xff5da2ff));
+        lookAndFeel.setColour(juce::Slider::trackColourId, juce::Colour(0xff3d6fa8));
+        lookAndFeel.setColour(juce::PopupMenu::backgroundColourId, juce::Colour(0xff202733));
+        lookAndFeel.setColour(juce::PopupMenu::textColourId, juce::Colour(0xffeef3f8));
+
+        selector = std::make_unique<juce::AudioDeviceSelectorComponent>(
+            deviceManager, 1, 2, 1, 2, true, false, true, false);
+        selector->setLookAndFeel(&lookAndFeel);
+        addAndMakeVisible(selector.get());
+    }
+
+    ~SettingsWorkspace() override
+    {
+        selector->setLookAndFeel(nullptr);
+    }
+
+    void paint(juce::Graphics& g) override
+    {
+        g.fillAll(juce::Colour(0xff171c24));
+
+        auto panel = getLocalBounds().toFloat().withTrimmedBottom(1.0f);
+        g.setColour(juce::Colour(0xff202733));
+        g.fillRoundedRectangle(panel, 12.0f);
+        g.setColour(juce::Colour(0xff354252));
+        g.drawRoundedRectangle(panel.reduced(0.5f), 12.0f, 1.0f);
+    }
+
+    void resized() override
+    {
+        auto area = getLocalBounds().reduced(28, 24);
+        const int width = juce::jmin(760, area.getWidth());
+        selector->setBounds(
+            juce::Rectangle<int>(area.getCentreX() - width / 2, area.getY(), width, area.getHeight()));
+    }
+
+private:
+    juce::LookAndFeel_V4 lookAndFeel;
+    std::unique_ptr<juce::AudioDeviceSelectorComponent> selector;
+};
+
 MainComponent::MainComponent()
 {
     addAndMakeVisible(tabs);
     setWantsKeyboardFocus(true);
 
-    // Audio settings tab
-    audioSettingsComponent = std::make_unique<juce::AudioDeviceSelectorComponent>(
-        deviceManager,
-        1, 2,
-        1, 2,
-        true, false, true, false);
+    appTitle.setText("GuitarFX", juce::dontSendNotification);
+    appTitle.setFont(juce::Font(20.0f, juce::Font::bold));
+    appTitle.setColour(juce::Label::textColourId, juce::Colour(0xfff2f5f8));
+    addAndMakeVisible(appTitle);
 
-    tabs.addTab("Audio", juce::Colours::lightgrey, audioSettingsComponent.get(), false);
+    appSubtitle.setText("Live guitar workspace", juce::dontSendNotification);
+    appSubtitle.setFont(juce::Font(12.0f));
+    appSubtitle.setColour(juce::Label::textColourId, juce::Colour(0xff8e9aaa));
+    addAndMakeVisible(appSubtitle);
+
+    audioStatusLabel.setJustificationType(juce::Justification::centredRight);
+    audioStatusLabel.setFont(juce::Font(12.0f));
+    audioStatusLabel.setColour(juce::Label::textColourId, juce::Colour(0xffaeb9c8));
+    addAndMakeVisible(audioStatusLabel);
+
+    const auto configureNavigationButton = [this](juce::TextButton& button, int tabIndex)
+    {
+        button.setClickingTogglesState(true);
+        button.setRadioGroupId(1001);
+        button.onClick = [this, tabIndex] { selectWorkspace(tabIndex); };
+        button.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff202733));
+        button.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff2f82ff));
+        button.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffb7c1ce));
+        button.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
+        addAndMakeVisible(button);
+    };
+
+    configureNavigationButton(pedalboardButton, 1);
+    configureNavigationButton(pluginsButton, 2);
+    configureNavigationButton(looperButton, 3);
+    configureNavigationButton(settingsButton, 0);
+
+    // Audio settings tab
+    audioSettingsComponent = std::make_unique<SettingsWorkspace>(deviceManager);
+
+    tabs.addTab("Settings", juce::Colours::lightgrey, audioSettingsComponent.get(), false);
 
     // Effects container
     effectsContainer = std::make_unique<juce::Component>();
@@ -89,7 +172,7 @@ MainComponent::MainComponent()
     for (auto& effect : effects)
         effectsContainer->addAndMakeVisible(effect.get());
 
-    tabs.addTab("Effects", juce::Colours::darkgrey, &effectsViewport, false);
+    tabs.addTab("Pedalboard", juce::Colours::darkgrey, &effectsViewport, false);
 
     // VST tab
     setupVSTTab();
@@ -97,6 +180,7 @@ MainComponent::MainComponent()
     // Looper tab
     setupLoopTab();
 
+    selectWorkspace(1);
     setSize(800, 600);
     startTimerHz(2);
 
@@ -123,6 +207,15 @@ MainComponent::~MainComponent()
     stopTimer();
     savePersistedState();
     shutdownAudio();
+}
+
+void MainComponent::selectWorkspace(int tabIndex)
+{
+    tabs.setCurrentTabIndex(tabIndex, false);
+    pedalboardButton.setToggleState(tabIndex == 1, juce::dontSendNotification);
+    pluginsButton.setToggleState(tabIndex == 2, juce::dontSendNotification);
+    looperButton.setToggleState(tabIndex == 3, juce::dontSendNotification);
+    settingsButton.setToggleState(tabIndex == 0, juce::dontSendNotification);
 }
 
 juce::File MainComponent::getPersistedStateFile() const
@@ -285,7 +378,7 @@ void MainComponent::setupVSTTab()
     vstEffectsViewport.setScrollBarsShown(true, false);
     vstTabComponent->addAndMakeVisible(vstEffectsViewport);
 
-    tabs.addTab("VST Plugins", juce::Colours::darkgrey, vstTabComponent.get(), false);
+    tabs.addTab("Plugins", juce::Colours::darkgrey, vstTabComponent.get(), false);
 }
 
 void MainComponent::setupLoopTab()
@@ -448,6 +541,12 @@ void MainComponent::timerCallback()
         || !audioDevice->isOpen()
         || !audioDevice->isPlaying())
         tryRestoreAudioDevice();
+
+    audioStatusLabel.setText(
+        audioDevice != nullptr && audioDevice->isOpen()
+            ? audioDevice->getName() + "  |  " + juce::String(audioDevice->getCurrentSampleRate(), 0) + " Hz"
+            : "Audio device unavailable",
+        juce::dontSendNotification);
 }
 
 void MainComponent::tryRestoreAudioDevice()
@@ -466,12 +565,32 @@ void MainComponent::tryRestoreAudioDevice()
 
 void MainComponent::paint(juce::Graphics& g)
 {
-    g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
+    g.fillAll(juce::Colour(0xff11151b));
+    g.setColour(juce::Colour(0xff1a2029));
+    g.fillRect(0, 0, getWidth(), 64);
+    g.setColour(juce::Colour(0xff202733));
+    g.fillRect(0, 64, 176, getHeight() - 64);
 }
 
 void MainComponent::resized()
 {
-    tabs.setBounds(getLocalBounds());
+    auto content = getLocalBounds();
+    auto topBar = content.removeFromTop(64);
+    appTitle.setBounds(topBar.removeFromLeft(120).reduced(16, 8));
+    appSubtitle.setBounds(topBar.removeFromLeft(150).reduced(0, 8));
+    audioStatusLabel.setBounds(topBar.removeFromRight(360).reduced(16, 8));
+
+    auto navigation = content.removeFromLeft(176).reduced(16, 16);
+    pedalboardButton.setBounds(navigation.removeFromTop(38));
+    navigation.removeFromTop(8);
+    pluginsButton.setBounds(navigation.removeFromTop(38));
+    navigation.removeFromTop(8);
+    looperButton.setBounds(navigation.removeFromTop(38));
+    navigation.removeFromTop(8);
+    settingsButton.setBounds(navigation.removeFromTop(38));
+
+    tabs.setTabBarDepth(0);
+    tabs.setBounds(content.reduced(16, 12));
 
     if (effectsContainer == nullptr)
         return;

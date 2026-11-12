@@ -95,6 +95,7 @@ private:
     void ensureRecordingCapacity(TrackState& track, int requiredSamples, int channelCount, bool exactSize);
     void recordChunk(TrackState& track, juce::AudioBuffer<float>& buffer, int startSample, int numSamples);
     void mixTrackPlayback(TrackState& track, juce::AudioBuffer<float>& buffer, int startSample, int numSamples);
+    void mixSeamPreview(juce::AudioBuffer<float>& buffer, int startSample, int numSamples);
     void processSegment(juce::AudioBuffer<float>& buffer, int startSample, int numSamples);
     void refreshLaneUi();
     int getTrackCountReady() const;
@@ -109,6 +110,9 @@ private:
     juce::TextButton stopButton { "Stop (Esc)" };
     juce::TextButton clearButton { "Clear All (Del)" };
     juce::ToggleButton autoTrimCapturedToggle { "Auto-trim new lanes" };
+    juce::ToggleButton seamAuditionToggle { "Audition Seam" };
+    juce::Label seamPreviewLabel;
+    juce::ComboBox seamPreviewLengthBox;
     juce::TextButton saveLoopButton { "Save Loop Set" };
     juce::TextButton loadLoopButton { "Load Loop Set" };
     juce::TextButton loadAutosaveButton { "Load Autosave" };
@@ -126,6 +130,9 @@ private:
     std::atomic<int> pendingClearCommands { 0 };
     std::array<std::atomic<int>, maxTracks> pendingLaneClearCommands {};
     std::atomic<bool> autoTrimCapturedEnabled { true };
+    std::atomic<bool> seamAuditionEnabled { false };
+    std::atomic<int> seamPreviewLengthMs { 1000 };
+    std::atomic<int> seamPreviewPosition { 0 };
 
     std::atomic<int> transportMode { static_cast<int>(TransportMode::Stopped) };
     std::atomic<int> masterLoopLengthSamples { 0 };

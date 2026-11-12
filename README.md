@@ -52,6 +52,7 @@ The Looper tab supports up to ten lanes:
 - Use **Clear All (Del)** to clear all lanes.
 - Adjust lane level and mute individual lanes.
 - Drag the waveform handles to trim the start and end.
+- Use **Audition Seam** to repeatedly hear the trimmed loop's ending followed by its beginning; choose a 250 ms, 500 ms, 1 second, or 2 second preview.
 - Automatically trim captured audio based on its signal level.
 - Add lanes with **Add Lane**.
 - Loop audio is autosaved approximately every two seconds while a loop exists.
@@ -92,10 +93,10 @@ For more information on building JUCE applications, see the [JUCE Tutorials](htt
 ## Running
 
 1. Connect the audio interface before launching the application.
-2. Open the **Audio** tab and select the desired input/output device and buffer size.
-3. Enable the built-in effects you want to use.
-4. Optionally add VST3 plugins from the **VST Plugins** tab.
-5. Use the **Looper** tab to record and layer loops.
+2. Open **Settings** and select the desired input/output device and buffer size.
+3. Use **Pedalboard** to enable the built-in effects.
+4. Open **Plugins** to scan and add optional VST3 effects.
+5. Use **Looper** to record and layer loops.
 
 Use headphones or suitable monitoring to avoid feedback.
 
