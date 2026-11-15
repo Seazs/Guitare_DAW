@@ -509,6 +509,26 @@ void MainComponent::getNextAudioBlock(const juce::AudioSourceChannelInfo& buffer
 {
     auto* buffer = bufferToFill.buffer;
 
+    // The guitar input is mono, but the device may expose it on either input channel.
+    if (buffer->getNumChannels() >= 2 && bufferToFill.numSamples > 0)
+    {
+        const auto leftLevel = buffer->getMagnitude(0, bufferToFill.startSample, bufferToFill.numSamples);
+        const auto rightLevel = buffer->getMagnitude(1, bufferToFill.startSample, bufferToFill.numSamples);
+
+        if (leftLevel > 0.0f || rightLevel > 0.0f)
+        {
+            const int sourceChannel = rightLevel > leftLevel ? 1 : 0;
+            const int otherChannel = 1 - sourceChannel;
+
+            buffer->copyFrom(otherChannel, bufferToFill.startSample, *buffer, sourceChannel,
+                             bufferToFill.startSample, bufferToFill.numSamples);
+
+            if (sourceChannel == 1)
+                buffer->copyFrom(1, bufferToFill.startSample, *buffer, 0,
+                                 bufferToFill.startSample, bufferToFill.numSamples);
+        }
+    }
+
     // Process built-in effects
     for (auto& effect : effects)
         effect->process(*buffer, bufferToFill.startSample, bufferToFill.numSamples);
