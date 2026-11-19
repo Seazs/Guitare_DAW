@@ -144,6 +144,7 @@
     <ClCompile Include="..\..\Source\Effects\DistortionEffect.cpp" />
     <ClCompile Include="..\..\Source\Effects\NoiseGateEffect.cpp" />
     <ClCompile Include="..\..\Source\Effects\Overdrive.cpp" />
+    <ClCompile Include="..\..\Source\Effects\PitchEffect.cpp" />
     <ClCompile Include="..\..\Source\Effects\ReverbEffect.cpp" />
     <ClCompile Include="..\..\Source\Looper\LooperTab.cpp" />
     <ClCompile Include="..\..\Source\Main.cpp" />
@@ -3003,6 +3004,7 @@
     <ClInclude Include="..\..\Source\Effects\EffectBase.h" />
     <ClInclude Include="..\..\Source\Effects\NoiseGateEffect.h" />
     <ClInclude Include="..\..\Source\Effects\Overdrive.h" />
+    <ClInclude Include="..\..\Source\Effects\PitchEffect.h" />
     <ClInclude Include="..\..\Source\Effects\ReverbEffect.h" />
     <ClInclude Include="..\..\Source\MainComponent.h" />
     <ClInclude Include="..\..\Source\VST\VSTEffect.h" />

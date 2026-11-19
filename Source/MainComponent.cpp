@@ -5,6 +5,7 @@
 #include "Effects/Overdrive.h"
 #include "Effects/CabinetEffect.h"
 #include "Effects/NoiseGateEffect.h"
+#include "Effects/PitchEffect.h"
 #include "VST/VSTEffect.h"
 #include "Looper/LooperTab.h"
 
@@ -164,6 +165,7 @@ MainComponent::MainComponent()
     effects.push_back(std::make_unique<DistortionEffect>());
     effects.push_back(std::make_unique<OverdriveEffect>());
     effects.push_back(std::make_unique<NoiseGateEffect>());
+    effects.push_back(std::make_unique<PitchEffect>());
     effects.push_back(std::make_unique<CabinetEffect>());
     effects.push_back(std::make_unique<DelayEffect>());
     effects.push_back(std::make_unique<ReverbEffect>());
@@ -625,6 +627,9 @@ void MainComponent::resized()
 
         if (dynamic_cast<const CabinetEffect*>(effect) != nullptr)
             return 102;
+
+        if (dynamic_cast<const PitchEffect*>(effect) != nullptr)
+            return 138;
 
         return 66;
     };

@@ -3597,6 +3597,9 @@
     <ClCompile Include="..\..\Source\Effects\Overdrive.cpp">
       <Filter>NewProject\effects</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source\Effects\PitchEffect.cpp">
+      <Filter>NewProject\effects</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\Source\Effects\ReverbEffect.cpp">
       <Filter>NewProject\effects</Filter>
     </ClCompile>
@@ -7776,6 +7779,9 @@
       <Filter>NewProject\effects</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\Effects\Overdrive.h">
+      <Filter>NewProject\effects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Effects\PitchEffect.h">
       <Filter>NewProject\effects</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\Effects\ReverbEffect.h">
