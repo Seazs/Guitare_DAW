@@ -8,6 +8,9 @@
       <FILE id="mCfwo6" name="MainComponent.h" compile="0" resource="0" file="Source/MainComponent.h"/>
       <FILE id="QEtSMX" name="MainComponent.cpp" compile="1" resource="0"
             file="Source/MainComponent.cpp"/>
+      <FILE id="Tuner1" name="TunerComponent.h" compile="0" resource="0" file="Source/TunerComponent.h"/>
+      <FILE id="Tuner2" name="TunerComponent.cpp" compile="1" resource="0"
+            file="Source/TunerComponent.cpp"/>
     </GROUP>
   </MAINGROUP>
   <MODULES>

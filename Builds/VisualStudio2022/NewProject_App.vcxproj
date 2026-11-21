@@ -149,6 +149,7 @@
     <ClCompile Include="..\..\Source\Looper\LooperTab.cpp" />
     <ClCompile Include="..\..\Source\Main.cpp" />
     <ClCompile Include="..\..\Source\MainComponent.cpp" />
+    <ClCompile Include="..\..\Source\TunerComponent.cpp" />
     <ClCompile Include="..\..\Source\VST\VSTEffect.cpp" />
     <ClCompile Include="..\..\Source\VST\VSTPluginManager.cpp" />
     <ClCompile Include="C:\Users\alexandre\Desktop\musique\JUCE\modules\juce_audio_basics\audio_play_head\juce_AudioPlayHead.cpp">
@@ -3007,6 +3008,7 @@
     <ClInclude Include="..\..\Source\Effects\PitchEffect.h" />
     <ClInclude Include="..\..\Source\Effects\ReverbEffect.h" />
     <ClInclude Include="..\..\Source\MainComponent.h" />
+    <ClInclude Include="..\..\Source\TunerComponent.h" />
     <ClInclude Include="..\..\Source\VST\VSTEffect.h" />
     <ClInclude Include="..\..\Source\VST\VSTPluginManager.h" />
     <ClInclude Include="C:\Users\alexandre\Desktop\musique\JUCE\modules\juce_audio_basics\audio_play_head\juce_AudioPlayHead.h" />

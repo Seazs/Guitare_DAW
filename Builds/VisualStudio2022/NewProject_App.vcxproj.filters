@@ -711,6 +711,9 @@
     <ClCompile Include="..\..\Source\MainComponent.cpp">
       <Filter>NewProject\Source</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source\TunerComponent.cpp">
+      <Filter>NewProject\Source</Filter>
+    </ClCompile>
     <ClCompile Include="C:\Users\alexandre\Desktop\musique\JUCE\modules\juce_audio_basics\audio_play_head\juce_AudioPlayHead.cpp">
       <Filter>JUCE Modules\juce_audio_basics\audio_play_head</Filter>
     </ClCompile>
@@ -3615,6 +3618,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Source\MainComponent.h">
+      <Filter>NewProject\Source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\TunerComponent.h">
       <Filter>NewProject\Source</Filter>
     </ClInclude>
     <ClInclude Include="C:\Users\alexandre\Desktop\musique\JUCE\modules\juce_audio_basics\audio_play_head\juce_AudioPlayHead.h">

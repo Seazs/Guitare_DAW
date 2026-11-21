@@ -6,6 +6,7 @@
 #include "Effects/EffectBase.h"
 #include "VST/VSTPluginManager.h"
 #include "Looper/LooperTab.h"
+#include "TunerComponent.h"
 
 class VSTEffect;
 
@@ -50,6 +51,7 @@ private:
     juce::TextButton pluginsButton { "Plugins" };
     juce::TextButton looperButton { "Looper" };
     juce::TextButton settingsButton { "Settings" };
+    TunerComponent tunerComponent;
 
     std::unique_ptr<juce::Component> audioSettingsComponent;
     juce::Viewport effectsViewport;

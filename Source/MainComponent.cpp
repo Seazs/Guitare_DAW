@@ -8,6 +8,8 @@
 #include "Effects/PitchEffect.h"
 #include "VST/VSTEffect.h"
 #include "Looper/LooperTab.h"
+#include <array>
+#include <cmath>
 
 namespace
 {
@@ -134,6 +136,8 @@ MainComponent::MainComponent()
     audioStatusLabel.setColour(juce::Label::textColourId, juce::Colour(0xffaeb9c8));
     addAndMakeVisible(audioStatusLabel);
 
+    addAndMakeVisible(tunerComponent);
+
     const auto configureNavigationButton = [this](juce::TextButton& button, int tabIndex)
     {
         button.setClickingTogglesState(true);
@@ -184,7 +188,7 @@ MainComponent::MainComponent()
 
     selectWorkspace(1);
     setSize(800, 600);
-    startTimerHz(2);
+    startTimerHz(10);
 
     loadPersistedState();
 
@@ -496,6 +500,7 @@ void MainComponent::prepareToPlay(int samplesPerBlockExpected, double sampleRate
 {
     currentSampleRate = sampleRate;
     currentBlockSize = samplesPerBlockExpected;
+    tunerComponent.prepareToPlay(sampleRate);
 
     for (auto& effect : effects)
         effect->prepareToPlay(sampleRate, samplesPerBlockExpected);
@@ -530,6 +535,8 @@ void MainComponent::getNextAudioBlock(const juce::AudioSourceChannelInfo& buffer
                                  bufferToFill.startSample, bufferToFill.numSamples);
         }
     }
+
+    tunerComponent.pushSamples(*buffer, bufferToFill.startSample, bufferToFill.numSamples);
 
     // Process built-in effects
     for (auto& effect : effects)
@@ -569,6 +576,7 @@ void MainComponent::timerCallback()
             ? audioDevice->getName() + "  |  " + juce::String(audioDevice->getCurrentSampleRate(), 0) + " Hz"
             : "Audio device unavailable",
         juce::dontSendNotification);
+
 }
 
 void MainComponent::tryRestoreAudioDevice()
@@ -592,6 +600,7 @@ void MainComponent::paint(juce::Graphics& g)
     g.fillRect(0, 0, getWidth(), 64);
     g.setColour(juce::Colour(0xff202733));
     g.fillRect(0, 64, 176, getHeight() - 64);
+
 }
 
 void MainComponent::resized()
@@ -610,6 +619,8 @@ void MainComponent::resized()
     looperButton.setBounds(navigation.removeFromTop(38));
     navigation.removeFromTop(8);
     settingsButton.setBounds(navigation.removeFromTop(38));
+
+    tunerComponent.setBounds(16, getHeight() - 170, 144, 142);
 
     tabs.setTabBarDepth(0);
     tabs.setBounds(content.reduced(16, 12));
