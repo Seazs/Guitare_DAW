@@ -215,10 +215,14 @@ void TunerComponent::updatePitch()
 
 void TunerComponent::paint(juce::Graphics& g)
 {
-    g.setColour(juce::Colour(0xff171c24));
-    g.fillRoundedRectangle(getLocalBounds().toFloat(), 10.0f);
-    g.setColour(juce::Colour(0xff354252));
-    g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(0.5f), 10.0f, 1.0f);
+    auto bounds = getLocalBounds().toFloat();
+    juce::ColourGradient gradient(
+        juce::Colour(0xff252d38), bounds.getX(), bounds.getY(),
+        juce::Colour(0xff1a2029), bounds.getRight(), bounds.getBottom(), false);
+    g.setGradientFill(gradient);
+    g.fillRoundedRectangle(bounds, 12.0f);
+    g.setColour(juce::Colour(0xff3c4858));
+    g.drawRoundedRectangle(bounds.reduced(0.5f), 12.0f, 1.0f);
 
     g.setColour(juce::Colour(0xff8e9aaa));
     g.setFont(10.0f);

@@ -18,17 +18,46 @@ namespace
     public:
         void paint(juce::Graphics& g) override
         {
-            g.fillAll(juce::Colour(0xff171c24));
+            g.fillAll(juce::Colour(0xff11151b));
 
             for (int i = 0; i < getNumChildComponents(); ++i)
             {
                 if (auto* child = getChildComponent(i))
                 {
-                    auto card = child->getBounds().toFloat();
-                    g.setColour(juce::Colour(0xff202733));
+                    if (auto* effect = dynamic_cast<EffectBase*>(child))
+                    {
+                        auto card = juce::Rectangle<float>(
+                            static_cast<float>(child->getX() - 12),
+                            static_cast<float>(child->getY() - 48),
+                            static_cast<float>(child->getWidth() + 24),
+                            static_cast<float>(child->getHeight() + 58));
+
+                        juce::ColourGradient gradient(
+                            juce::Colour(0xff252d38), card.getX(), card.getY(),
+                            juce::Colour(0xff1b222c), card.getRight(), card.getBottom(), false);
+                        g.setGradientFill(gradient);
+                        g.fillRoundedRectangle(card, 12.0f);
+                        g.setColour(juce::Colour(0xff3c4858));
+                        g.drawRoundedRectangle(card.reduced(0.5f), 12.0f, 1.0f);
+
+                        auto header = card.withHeight(38.0f);
+                        g.setColour(juce::Colour(0xff7187a6));
+                        g.fillRoundedRectangle(header.reduced(12, 10).removeFromLeft(3).toFloat(), 1.5f);
+
+                        g.setColour(juce::Colour(0xffedf3fa));
+                        g.setFont(juce::Font(14.0f, juce::Font::bold));
+                        g.drawText(effect->getName(), juce::roundToInt(header.getX()) + 22,
+                                   juce::roundToInt(header.getY()) + 8, juce::roundToInt(header.getWidth()) - 34, 22,
+                                   juce::Justification::centredLeft, false);
+                    }
+                    else
+                    {
+                        auto card = child->getBounds().toFloat();
+                        g.setColour(juce::Colour(0xff202733));
                     g.fillRoundedRectangle(card, 10.0f);
                     g.setColour(juce::Colour(0xff354252));
                     g.drawRoundedRectangle(card.reduced(0.5f), 10.0f, 1.0f);
+                    }
                 }
             }
         }
@@ -61,7 +90,15 @@ public:
     void paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected) override
     {
         if (rowIsSelected)
-            g.fillAll(juce::Colours::lightblue);
+        {
+            g.setColour(juce::Colour(0xff2f82ff).withAlpha(0.65f));
+            g.fillRoundedRectangle(2.0f, 2.0f, static_cast<float>(width - 4), static_cast<float>(height - 4), 6.0f);
+        }
+        else
+        {
+            g.setColour(rowNumber % 2 == 0 ? juce::Colour(0xff1b222c) : juce::Colour(0xff202733));
+            g.fillRect(0, 0, width, height);
+        }
 
         if (rowNumber < pluginList.getNumTypes())
         {
@@ -139,11 +176,27 @@ private:
 
 MainComponent::MainComponent()
 {
+    appLookAndFeel.setColour(juce::ResizableWindow::backgroundColourId, juce::Colour(0xff11151b));
+    appLookAndFeel.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff252d38));
+    appLookAndFeel.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff3b82f6));
+    appLookAndFeel.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffc5cfdb));
+    appLookAndFeel.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
+    appLookAndFeel.setColour(juce::ToggleButton::textColourId, juce::Colour(0xffdbe5f0));
+    appLookAndFeel.setColour(juce::Slider::trackColourId, juce::Colour(0xff344456));
+    appLookAndFeel.setColour(juce::Slider::thumbColourId, juce::Colour(0xff63a4ff));
+    appLookAndFeel.setColour(juce::Slider::backgroundColourId, juce::Colour(0xff202733));
+    appLookAndFeel.setColour(juce::ComboBox::backgroundColourId, juce::Colour(0xff252d38));
+    appLookAndFeel.setColour(juce::ComboBox::textColourId, juce::Colour(0xffedf3fa));
+    appLookAndFeel.setColour(juce::ComboBox::outlineColourId, juce::Colour(0xff4a586b));
+    appLookAndFeel.setColour(juce::ListBox::backgroundColourId, juce::Colour(0xff171c24));
+    appLookAndFeel.setColour(juce::ListBox::textColourId, juce::Colour(0xffdbe5f0));
+    setLookAndFeel(&appLookAndFeel);
+
     addAndMakeVisible(tabs);
     setWantsKeyboardFocus(true);
 
     appTitle.setText("GuitarFX", juce::dontSendNotification);
-    appTitle.setFont(juce::Font(20.0f, juce::Font::bold));
+    appTitle.setFont(juce::Font(24.0f, juce::Font::bold));
     appTitle.setColour(juce::Label::textColourId, juce::Colour(0xfff2f5f8));
     addAndMakeVisible(appTitle);
 
@@ -234,6 +287,7 @@ MainComponent::~MainComponent()
     stopTimer();
     savePersistedState();
     shutdownAudio();
+    setLookAndFeel(nullptr);
 }
 
 void MainComponent::selectWorkspace(int tabIndex)
@@ -617,31 +671,53 @@ void MainComponent::tryRestoreAudioDevice()
 void MainComponent::paint(juce::Graphics& g)
 {
     g.fillAll(juce::Colour(0xff11151b));
-    g.setColour(juce::Colour(0xff1a2029));
-    g.fillRect(0, 0, getWidth(), 64);
-    g.setColour(juce::Colour(0xff202733));
-    g.fillRect(0, 64, 176, getHeight() - 64);
+    juce::ColourGradient topGradient(
+        juce::Colour(0xff202735), 0.0f, 0.0f,
+        juce::Colour(0xff151a22), static_cast<float>(getWidth()), 72.0f, false);
+    g.setGradientFill(topGradient);
+    g.fillRect(0, 0, getWidth(), 72);
 
+    g.setColour(juce::Colour(0xff2d3745));
+    g.fillRect(0, 71, getWidth(), 1);
+
+    juce::ColourGradient sideGradient(
+        juce::Colour(0xff1a2029), 0.0f, 72.0f,
+        juce::Colour(0xff151a21), 192.0f, static_cast<float>(getHeight()), false);
+    g.setGradientFill(sideGradient);
+    g.fillRect(0, 72, 192, getHeight() - 72);
+
+    g.setColour(juce::Colour(0xff2a3340));
+    g.fillRect(191, 72, 1, getHeight() - 72);
+
+    auto statusArea = juce::Rectangle<float>(
+        static_cast<float>(getWidth() - 326),
+        18.0f,
+        310.0f,
+        36.0f);
+    g.setColour(juce::Colour(0xff202733));
+    g.fillRoundedRectangle(statusArea, 18.0f);
+    g.setColour(juce::Colour(0xff3a4655));
+    g.drawRoundedRectangle(statusArea.reduced(0.5f), 18.0f, 1.0f);
 }
 
 void MainComponent::resized()
 {
     auto content = getLocalBounds();
-    auto topBar = content.removeFromTop(64);
-    appTitle.setBounds(topBar.removeFromLeft(120).reduced(16, 8));
-    appSubtitle.setBounds(topBar.removeFromLeft(150).reduced(0, 8));
-    audioStatusLabel.setBounds(topBar.removeFromRight(360).reduced(16, 8));
+    auto topBar = content.removeFromTop(72);
+    appTitle.setBounds(topBar.removeFromLeft(150).reduced(20, 8));
+    appSubtitle.setBounds(topBar.removeFromLeft(180).reduced(0, 12));
+    audioStatusLabel.setBounds(juce::Rectangle<int>(getWidth() - 318, 18, 294, 36).reduced(8, 6));
 
-    auto navigation = content.removeFromLeft(176).reduced(16, 16);
-    pedalboardButton.setBounds(navigation.removeFromTop(38));
-    navigation.removeFromTop(8);
-    pluginsButton.setBounds(navigation.removeFromTop(38));
-    navigation.removeFromTop(8);
-    looperButton.setBounds(navigation.removeFromTop(38));
-    navigation.removeFromTop(8);
-    settingsButton.setBounds(navigation.removeFromTop(38));
+    auto navigation = content.removeFromLeft(192).reduced(16, 18);
+    pedalboardButton.setBounds(navigation.removeFromTop(42));
+    navigation.removeFromTop(7);
+    pluginsButton.setBounds(navigation.removeFromTop(42));
+    navigation.removeFromTop(7);
+    looperButton.setBounds(navigation.removeFromTop(42));
+    navigation.removeFromTop(7);
+    settingsButton.setBounds(navigation.removeFromTop(42));
 
-    tunerComponent.setBounds(16, getHeight() - 170, 144, 142);
+    tunerComponent.setBounds(24, getHeight() - 178, 144, 150);
 
     tabs.setTabBarDepth(0);
     tabs.setBounds(content.reduced(16, 12));
@@ -652,18 +728,21 @@ void MainComponent::resized()
     const auto getEffectHeight = [](const EffectBase* effect)
     {
         if (dynamic_cast<const DelayEffect*>(effect) != nullptr)
-            return 102;
+            return 140;
 
         if (dynamic_cast<const OverdriveEffect*>(effect) != nullptr)
-            return 102;
+            return 140;
 
         if (dynamic_cast<const CabinetEffect*>(effect) != nullptr)
-            return 102;
+            return 140;
 
         if (dynamic_cast<const PitchEffect*>(effect) != nullptr)
-            return 138;
+            return 176;
 
-        return 66;
+        if (dynamic_cast<const NoiseGateEffect*>(effect) != nullptr)
+            return 140;
+
+        return 104;
     };
 
     const int margin = 16;
@@ -685,7 +764,9 @@ void MainComponent::resized()
 
     for (size_t i = 0; i < effects.size(); ++i)
     {
-        effects[i]->setBounds(effectBounds.removeFromTop(getEffectHeight(effects[i].get())));
+        constexpr int headerHeight = 38;
+        auto cardBounds = effectBounds.removeFromTop(getEffectHeight(effects[i].get()));
+        effects[i]->setBounds(cardBounds.withTrimmedTop(headerHeight).reduced(12, 10));
         if (i + 1 < effects.size())
             effectBounds.removeFromTop(spacing);
     }

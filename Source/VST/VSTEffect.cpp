@@ -206,11 +206,14 @@ void VSTEffect::paint(juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
 
-    g.setColour(juce::Colours::darkgrey.darker(0.2f));
-    g.fillRoundedRectangle(bounds, 4.0f);
+    juce::ColourGradient gradient(
+        juce::Colour(0xff252d38), bounds.getX(), bounds.getY(),
+        juce::Colour(0xff1b222c), bounds.getRight(), bounds.getBottom(), false);
+    g.setGradientFill(gradient);
+    g.fillRoundedRectangle(bounds, 10.0f);
 
-    g.setColour(juce::Colours::grey);
-    g.drawRoundedRectangle(bounds.reduced(1.0f), 4.0f, 1.0f);
+    g.setColour(juce::Colour(0xff3c4858));
+    g.drawRoundedRectangle(bounds.reduced(0.5f), 10.0f, 1.0f);
 }
 
 void VSTEffect::resized()

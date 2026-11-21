@@ -969,9 +969,16 @@ void LooperTabComponent::paint(juce::Graphics& g)
 {
     auto area = getLocalBounds().toFloat();
 
-    g.fillAll(juce::Colour(0xff1c1f26));
-    g.setColour(juce::Colour(0xff2d3440));
+    g.fillAll(juce::Colour(0xff11151b));
+
+    juce::ColourGradient gradient(
+        juce::Colour(0xff1d252f), area.getX(), area.getY(),
+        juce::Colour(0xff171c24), area.getRight(), area.getBottom(), false);
+    g.setGradientFill(gradient);
     g.fillRoundedRectangle(area.reduced(8.0f), 16.0f);
+
+    g.setColour(juce::Colour(0xff354252));
+    g.drawRoundedRectangle(area.reduced(8.5f), 16.0f, 1.0f);
 }
 
 void LooperTabComponent::resized()

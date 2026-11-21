@@ -44,6 +44,7 @@ private:
     juce::File getPersistedStateFile() const;
 
     juce::TabbedComponent tabs{ juce::TabbedButtonBar::TabsAtTop };
+    juce::LookAndFeel_V4 appLookAndFeel;
     juce::Label appTitle;
     juce::Label appSubtitle;
     juce::Label audioStatusLabel;
