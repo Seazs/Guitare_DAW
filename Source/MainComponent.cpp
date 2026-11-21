@@ -13,6 +13,27 @@
 
 namespace
 {
+    class EffectsWorkspace : public juce::Component
+    {
+    public:
+        void paint(juce::Graphics& g) override
+        {
+            g.fillAll(juce::Colour(0xff171c24));
+
+            for (int i = 0; i < getNumChildComponents(); ++i)
+            {
+                if (auto* child = getChildComponent(i))
+                {
+                    auto card = child->getBounds().toFloat();
+                    g.setColour(juce::Colour(0xff202733));
+                    g.fillRoundedRectangle(card, 10.0f);
+                    g.setColour(juce::Colour(0xff354252));
+                    g.drawRoundedRectangle(card.reduced(0.5f), 10.0f, 1.0f);
+                }
+            }
+        }
+    };
+
     juce::String findBestDeviceName(const juce::StringArray& deviceNames, const juce::String& preferredName)
     {
         for (const auto& name : deviceNames)
@@ -158,10 +179,10 @@ MainComponent::MainComponent()
     // Audio settings tab
     audioSettingsComponent = std::make_unique<SettingsWorkspace>(deviceManager);
 
-    tabs.addTab("Settings", juce::Colours::lightgrey, audioSettingsComponent.get(), false);
+    tabs.addTab("Settings", juce::Colour(0xff171c24), audioSettingsComponent.get(), false);
 
     // Effects container
-    effectsContainer = std::make_unique<juce::Component>();
+    effectsContainer = std::make_unique<EffectsWorkspace>();
     effectsViewport.setViewedComponent(effectsContainer.get(), false);
     effectsViewport.setScrollBarsShown(true, false);
 
@@ -178,7 +199,7 @@ MainComponent::MainComponent()
     for (auto& effect : effects)
         effectsContainer->addAndMakeVisible(effect.get());
 
-    tabs.addTab("Pedalboard", juce::Colours::darkgrey, &effectsViewport, false);
+    tabs.addTab("Pedalboard", juce::Colour(0xff171c24), &effectsViewport, false);
 
     // VST tab
     setupVSTTab();
@@ -384,13 +405,13 @@ void MainComponent::setupVSTTab()
     vstEffectsViewport.setScrollBarsShown(true, false);
     vstTabComponent->addAndMakeVisible(vstEffectsViewport);
 
-    tabs.addTab("Plugins", juce::Colours::darkgrey, vstTabComponent.get(), false);
+    tabs.addTab("Plugins", juce::Colour(0xff171c24), vstTabComponent.get(), false);
 }
 
 void MainComponent::setupLoopTab()
 {
     looperTabComponent = std::make_unique<LooperTabComponent>();
-    tabs.addTab("Looper", juce::Colours::darkgrey, looperTabComponent.get(), false);
+    tabs.addTab("Looper", juce::Colour(0xff171c24), looperTabComponent.get(), false);
 }
 
 
@@ -668,6 +689,7 @@ void MainComponent::resized()
         if (i + 1 < effects.size())
             effectBounds.removeFromTop(spacing);
     }
+    effectsContainer->repaint();
 
     // Layout VST tab
     if (vstTabComponent != nullptr)
