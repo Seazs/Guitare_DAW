@@ -13,6 +13,8 @@ GuitarFX is a JUCE-based Windows desktop guitar effects application. It processe
 
 ### Built-in effects
 
+![Image: Effects tab screenshot](imgs/Pedalboard.png)
+
 The Effects tab includes the following processors:
 
 - Distortion
@@ -25,6 +27,8 @@ The Effects tab includes the following processors:
 Each effect can be enabled or bypassed and exposes its relevant controls.
 
 ### VST3 plugins
+
+![Image: VST Plugins tab screenshot](imgs/Plugin.png)
 
 The VST Plugins tab scans standard VST3 locations and lets you:
 
@@ -41,6 +45,8 @@ On Windows, the default scan locations are:
 - `%LOCALAPPDATA%\VST3`
 
 ### Looper
+
+![Image: Looper tab screenshot](imgs/Looper.png)
 
 The Looper tab supports up to ten lanes:
 
